@@ -1,0 +1,283 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  name              String?
+  username          String            @unique
+  password          String            @db.VarChar(255)
+  bio               String?
+  avatar            String?
+  language          String?   
+  location          String?
+  createdAt         DateTime          @default(now())
+  
+  posts             Post[]
+  likes             Like[]
+  comments          Comment[]
+  complaints        Complaint[]
+  
+  following         Follows[]         @relation("following")
+  followers         Follows[]         @relation("followers")
+  savedPosts        SavedPost[]
+  
+  chatParticipants  ChatParticipant[]
+  messages          Message[]
+  moderator         Moderator?
+  
+  communityMembers  CommunityMember[]
+  ownedCommunities  Community[]       @relation("OwnerCommunities")
+}
+
+model Chat {
+  id            String   @id @default(uuid())
+  type          ChatType
+  createdAt     DateTime @default(now())
+  
+  messages      Message[]
+  participants  ChatParticipant[]
+}
+
+model Message {
+  id              String   @id @default(uuid())
+  chatId          String
+  senderId        String
+  content         String
+  createdAt       DateTime @default(now())
+  
+  chat            Chat     @relation(fields: [chatId], references: [id])
+  sender          User     @relation(fields: [senderId], references: [id])
+  
+  forwardedFromId String?
+  isRead          Boolean  @default(false)
+  forwardedFrom   Message? @relation("ForwardedMessages", fields: [forwardedFromId], references: [id])
+  forwardedTo     Message[] @relation("ForwardedMessages")
+  
+  @@index([chatId])
+}
+
+model ChatParticipant {
+  userId String
+  chatId String
+  
+  user  User @relation(fields: [userId], references: [id])
+  chat  Chat @relation(fields: [chatId], references: [id])
+  
+  @@id([userId, chatId])
+}
+
+enum ChatType {
+  PRIVATE
+  GROUP
+}
+
+model Post {
+  id                String           @id @default(uuid())
+  title             String
+  content           String?
+  authorId          String
+  author            User             @relation(fields: [authorId], references: [id])
+  
+  communityId       String?          
+  community         Community?       @relation(fields: [communityId], references: [id])
+  
+  status            PostStatus       @default(DRAFT)
+  publicationType   PublicationType  @default(ARTICLE)
+  publicationMode   PublicationMode  @default(USER)
+  
+  postVersions      PostVersion[]
+  publishAt         DateTime?
+  
+  postTags          PostTag[]
+  likes             Like[]
+  comments          Comment[]
+  complaints        Complaint[]
+  createdAt         DateTime         @default(now())
+  savedBy           SavedPost[]
+}
+
+model Tag {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  
+  postTags  PostTag[]
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  
+  post   Post @relation(fields: [postId], references: [id])
+  tag    Tag  @relation(fields: [tagId], references: [id])
+  
+  @@id([postId, tagId])
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  
+  post      Post     @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  
+  @@unique([postId, userId])
+}
+
+model Comment {
+  id         String    @id @default(uuid())
+  content    String
+  postId     String
+  userId     String
+  createdAt  DateTime  @default(now())
+  
+  post       Post      @relation(fields: [postId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+  complaints Complaint[]
+}
+
+model Follows {
+  followerId  String
+  followingId String
+  
+  follower    User @relation("following", fields: [followerId], references: [id])
+  following   User @relation("followers", fields: [followingId], references: [id])
+  
+  @@id([followerId, followingId])
+}
+
+model SavedPost {
+  userId String
+  postId String
+  
+  user   User @relation(fields: [userId], references: [id])
+  post   Post @relation(fields: [postId], references: [id])
+  
+  @@id([userId, postId])
+}
+
+model PostVersion {
+  id        String   @id @default(uuid())
+  postId    String
+  title     String
+  content   String?
+  editorId  String?   
+  createdAt DateTime  @default(now())
+  
+  post      Post     @relation(fields: [postId], references: [id])
+}
+
+enum PostStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+enum PublicationMode {
+  USER
+  COMMUNITY
+}
+
+enum PublicationType {
+  ARTICLE
+  NEWS
+  REVIEW
+}
+
+model Notification {
+  id           String   @id @default(uuid())
+  type         String
+  senderId     String
+  senderName   String
+  recipientId  String
+  postId       String?
+  message      String
+  createdAt    DateTime @default(now())
+  isRead       Boolean  @default(false)
+}
+
+model Complaint {
+  id          String           @id @default(uuid())
+  reason      String
+  description String?
+  status      ComplaintStatus  @default(NEW)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  postId      String?
+  commentId   String?
+  
+  userId      String
+  
+  user        User      @relation(fields: [userId], references: [id])
+  post        Post?     @relation(fields: [postId], references: [id])
+  comment     Comment?  @relation(fields: [commentId], references: [id])
+}
+
+enum ComplaintStatus {
+  NEW
+  REVIEWED
+  REJECTED
+}
+
+model Moderator {
+  id     String  @id @default(uuid())
+  userId String  @unique
+  user   User    @relation(fields: [userId], references: [id])
+}
+
+
+model Community {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  avatar      String?   
+  background  String?   
+  rules       String?   @db.Text  
+  createdAt   DateTime  @default(now())
+  ownerId     String
+  owner       User      @relation("OwnerCommunities", fields: [ownerId], references: [id])
+  
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  
+  posts       Post[]
+  members     CommunityMember[]
+}
+
+model CommunityMember {
+  communityId String
+  userId      String
+  role        CommunityRole      @default(MEMBER)
+  joinedAt    DateTime           @default(now())
+  notifications Boolean          @default(false)
+  
+  community   Community          @relation(fields: [communityId], references: [id])
+  user        User               @relation(fields: [userId], references: [id])
+  
+  @@id([communityId, userId])
+}
+
+enum CommunityRole {
+  MEMBER
+  ADMIN
+  MODERATOR
+}
+
+model Category {
+  id           String       @id @default(uuid())
+  name         String       @unique
+  communities  Community[]
+}
