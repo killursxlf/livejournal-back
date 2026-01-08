@@ -165,6 +165,7 @@ export async function verifyUser(req: Request) {
   }
 }
 
+
 export async function checkGoogleUser(req: Request) {
   try {
     const { email, name } = await req.json();
@@ -172,10 +173,22 @@ export async function checkGoogleUser(req: Request) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
+      if (!process.env.JWT_SECRET) {
+        throw new Error("JWT_SECRET не найден в .env");
+      }
+
+      const token = jwt.sign(
+        { id: existingUser.id, email: existingUser.email },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
       const { password, ...userData } = existingUser;
-      return new Response(JSON.stringify({ found: true, user: userData }), {
-        headers: { "Content-Type": "application/json" },
-      });
+
+      return new Response(
+        JSON.stringify({ found: true, token, user: userData }),
+        { headers: { "Content-Type": "application/json" } }
+      );
     }
 
     const newUser = await prisma.user.create({
@@ -187,14 +200,29 @@ export async function checkGoogleUser(req: Request) {
       },
     });
 
-    return new Response(JSON.stringify({ found: false, userId: newUser.id }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ found: false, userId: newUser.id }),
+      { headers: { "Content-Type": "application/json" } }
+    );
   } catch (err) {
     console.error("Ошибка при checkGoogleUser:", err);
     return new Response(JSON.stringify({ error: "Ошибка сервера" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
+  }
+}
+
+
+export function verifyJwtFromHeader(req: Request): any | null {
+  const auth = req.headers.get("authorization") || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+
+  if (!token) return null;
+
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET!);
+  } catch {
+    return null;
   }
 }

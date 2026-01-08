@@ -3,7 +3,7 @@ import {
   register,
   login,
   logout,
-  verifyToken,
+  verifyJwtFromHeader,
   verifyUser,
   checkGoogleUser,
 } from "./routes/auth";
@@ -14,7 +14,6 @@ import {
   getUserCommunities,
 } from "./routes/user";
 import { corsHeaders } from "./utils/cors";
-import { readFile } from "fs/promises";
 import {
   getAllPosts,
   getPost,
@@ -170,7 +169,7 @@ serve({
         return wrapWithCors(await methodRoutesPublic[normalizedPath](req), req);
       }
 
-      const user = await verifyToken(req);
+      const user = await verifyJwtFromHeader(req);
       if (!user) {
         return new Response(JSON.stringify({ error: "Не авторизован" }), {
           status: 401,
