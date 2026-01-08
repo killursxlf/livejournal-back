@@ -2,6 +2,8 @@
 
 FROM oven/bun:1.3.5
 
+RUN apt-get update && apt-get install -y ca-certificates
+
 WORKDIR /app
 
 COPY package.json bun.lock ./
@@ -19,4 +21,4 @@ EXPOSE 3000
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-CMD ["/app/start.sh"]
+CMD ["/start.sh"]
