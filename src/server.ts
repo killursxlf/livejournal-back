@@ -137,7 +137,7 @@ async function handleDynamicRoutes(url: URL, req: Request) {
 }
 
 serve({
-  port: 3000,
+  port: Number(process.env.PORT) || 3000,
   async fetch(req: Request) {
     const url = new URL(req.url);
 
@@ -152,13 +152,14 @@ serve({
 
     try {
       if (url.pathname.startsWith("/uploads/")) {
-        try {
-          const filePath = `./public${url.pathname}`;
-          const file = await readFile(filePath);
-          return new Response(file, { headers: { "Content-Type": "image/jpeg" } });
-        } catch {
+        const filePath = `./public${url.pathname}`;
+        const f = Bun.file(filePath);
+
+        if (!(await f.exists())) {
           return new Response("Файл не найден", { status: 404 });
         }
+
+        return new Response(f);
       }
 
       const methodRoutesPublic = publicRoutes[req.method] || {};
@@ -204,4 +205,4 @@ function wrapWithCors(response: Response, req: Request) {
   return new Response(response.body, { status: response.status, headers: mergedHeaders });
 }
 
-console.log("🚀 Bun API работает на http://localhost:3000");
+console.log(`🚀 Bun API работает на порту ${process.env.PORT || 3000}`);
