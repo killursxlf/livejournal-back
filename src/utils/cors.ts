@@ -1,8 +1,6 @@
 export function corsHeaders(request?: Request) {
   const allowedOrigins = [
-    "http://localhost:3001",
-    "http://26.182.91.97:3001",
-    "http://192.168.178.24:3001",
+    "https://livejournal-sjo1.vercel.app",
     "http://localhost:3000"
   ];
   const requestOrigin = request?.headers.get("Origin") || "";
