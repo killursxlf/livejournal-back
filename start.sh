@@ -3,4 +3,4 @@ set -e
 
 bunx prisma migrate deploy || true
 
-exec bun run src/start.ts
+bun run src/server.ts
