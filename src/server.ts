@@ -38,7 +38,6 @@ import {
   updateComplaintStatus,
   getComplaints,
 } from "./routes/complaints";
-import { chatHandler } from "./routes/chat";
 import {
   createCommunity,
   getCommunity,
@@ -113,27 +112,6 @@ const privateRoutes: Record<string, Record<string, (req: Request) => Promise<Res
   },
 };
 
-async function handleDynamicRoutes(url: URL, req: Request) {
-  const path = url.pathname;
-
-  // чат
-  if (path.startsWith("/api/chat/") && path.endsWith("/message") && req.method === "POST")
-    return chatHandler.sendMessage(req);
-
-  if (path.startsWith("/api/chat/") && path.endsWith("/messages") && req.method === "GET")
-    return chatHandler.getMessages(req);
-
-  if (path.startsWith("/api/chat/") && path.endsWith("/read") && req.method === "PATCH")
-    return chatHandler.markAsRead(req);
-
-  if (path.startsWith("/api/chat/") && path.endsWith("/forward") && req.method === "POST")
-    return chatHandler.forwardMessage(req);
-
-  if (path.startsWith("/api/user/") && path.endsWith("/chats") && req.method === "GET")
-    return chatHandler.getUserChats(req);
-
-  return null;
-}
 
 serve({
   port: Number(process.env.PORT) || 3000,
@@ -180,9 +158,6 @@ serve({
       if (methodRoutesPrivate[normalizedPath]) {
         return wrapWithCors(await methodRoutesPrivate[normalizedPath](req), req);
       }
-
-      const dyn = await handleDynamicRoutes(url, req);
-      if (dyn) return wrapWithCors(dyn, req);
 
       return new Response("Страница не найдена", { status: 404 });
     } catch (err) {
